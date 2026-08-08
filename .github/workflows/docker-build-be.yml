@@ -36,9 +36,9 @@ jobs:
             BRANCH="${{ github.ref_name }}"
             case "$BRANCH" in
               dev) echo "environment=dev" >> $GITHUB_OUTPUT ;;
-              prod-blue) echo "environment=prod-blue" >> $GITHUB_OUTPUT ;;
               *) echo "environment=dev" >> $GITHUB_OUTPUT ;;
             esac
+          fi
   
   build_backend_docker_image_and_push:
     runs-on: ubuntu-latest
