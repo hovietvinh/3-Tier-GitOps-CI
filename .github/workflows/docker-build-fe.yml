@@ -80,4 +80,46 @@ jobs:
           tags: |
             hovietvinh29032004/frontend:latest
             hovietvinh29032004/frontend:${{ env.IMAGE_TAG }}
+  update_cd_repo:
+    runs-on: ubuntu-latest
+    needs: [build_frontend_docker_image_and_push, resolve_env]
+    environment: ${{needs.resolve_env.outputs.environment}}
+    env:
+      CD_REPO_TOKEN: ${{ secrets.CD_REPO_TOKEN }}
+    steps:
+      - name: Checkout CD repo
+        uses: actions/checkout@v4
+
+        with:
+          repository: hovietvinh/3-Tier-GitOps-CD
+          ref: dev
+          token: ${{ env.CD_REPO_TOKEN }}
+          path: cd
+      
+      - name: Bump images in manifests (safe)
+        working-directory: cd
+        env:
+          IMAGE_TAG: ${{ env.IMAGE_TAG }}
+        run: |
+          curl -sL https://github.com/mikefarah/yq/releases/download/v4.44.3/yq_linux_amd64 -o yq && sudo install yq /usr/local/bin/yq
+
+          # -- Safety cleanup: remove any accidental .spec.template from Service docs
+          yq -i '(. | select(.kind=="Service")) |= del(.spec.template)' k8s/frontend.yaml
+
+          # -- Update ONLY Deployment images (frontend)
+          yq -i '
+            (. | select(.kind=="Deployment")
+               | .spec.template.spec.containers[]
+               | select(.name=="frontend")
+               | .image)
+            = "hovietvinh29032004/frontend:" + strenv(IMAGE_TAG)
+          ' k8s/frontend.yaml
+      - name: Commit & push to CD repo
+        working-directory: cd
+        run: |
+          git config user.name "ci-bot"
+          git config user.email "ci-bot@users.noreply.github.com"
+          git add -A
+          git commit -m "bump images to ${IMAGE_TAG}" || echo "no changes"
+          git push
     
