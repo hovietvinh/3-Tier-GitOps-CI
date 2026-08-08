@@ -101,13 +101,12 @@ jobs:
 
           # -- Safety cleanup: remove any accidental .spec.template from Service docs
           yq -i '(. | select(.kind=="Service")) |= del(.spec.template)' k8s/backend.yaml
-          yq -i '(. | select(.kind=="Service")) |= del(.spec.template)' k8s/frontend.yaml
 
           # -- Update ONLY Deployment images (backend)
           yq -i '
             (. | select(.kind=="Deployment")
                | .spec.template.spec.containers[]
-               | select(.name=="backend-deployment")
+               | select(.name=="backend")
                | .image)
             = "hovietvinh29032004/backend:" + strenv(IMAGE_TAG)
           ' k8s/backend.yaml
